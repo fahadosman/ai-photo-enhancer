@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String       @id @default(cuid())
+  email            String       @unique
+  name             String?
+  image            String?
+  password         String?
+  role             UserRole     @default(USER)
+  credits          Int          @default(100)
+  aiUsage          Int          @default(0)
+  paddleCustomerId String?      @unique
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  lastActive       DateTime     @default(now())
+  images           Image[]
+  enhancements     Enhancement[]
+  subscription     Subscription?
+  payments         Payment[]
+  apiKeys          ApiKey[]
+  notifications    Notification[]
+
+  @@index([email])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUBSCRIBER
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paddlePlanId       String
+  paddlePriceId      String
+  paddleProductId    String
+  paddleCustomerId   String
+  status             SubscriptionStatus @default(ACTIVE)
+  plan               SubscriptionPlan   @default(FREE)
+  cancelAtPeriodEnd  Boolean            @default(false)
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime           @default(now())
+  trialEndsAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  payments           Payment[]
+
+  @@index([userId])
+  @@index([paddleCustomerId])
+  @@index([status])
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+  TRIALING
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId        String?
+  subscription          Subscription? @relation(fields: [subscriptionId], references: [id])
+  paddleTransactionId   String        @unique
+  paddleSubscriptionId  String?
+  amount                Float
+  currency              String        @default("USD")
+  status                PaymentStatus @default(PENDING)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([userId])
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Image {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  originalUrl      String
+  enhancedUrl      String?
+  filename         String
+  mimeType         String
+  size             Int
+  isProcessed      Boolean       @default(false)
+  processingFailed Boolean       @default(false)
+  errorMessage     String?
+  createdAt        DateTime      @default(now())
+  enhancements     Enhancement[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Enhancement {
+  id              String            @id @default(cuid())
+  imageId         String
+  image           Image             @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            EnhancementType
+  status          EnhancementStatus @default(PENDING)
+  upscaleFactor   Int?              @default(2)
+  faceRestoration Boolean           @default(false)
+  denoise         Boolean           @default(false)
+  sharpening      Boolean           @default(false)
+  jobId           String?
+  cost            Int               @default(1)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  processingTime  Float?
+  errorMessage    String?
+  createdAt       DateTime          @default(now())
+
+  @@index([imageId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum EnhancementType {
+  UPSCALE
+  FACE_RESTORE
+  DENOISE
+  SHARPEN
+  BACKGROUND_REMOVE
+  FULL_ENHANCE
+}
+
+enum EnhancementStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model ApiKey {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String     @unique
+  name      String
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  usages    ApiUsage[]
+
+  @@index([userId])
+}
+
+model ApiUsage {
+  id           String   @id @default(cuid())
+  apiKeyId     String
+  apiKey       ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  endpoint     String
+  statusCode   Int
+  responseTime Float
+  createdAt    DateTime @default(now())
+
+  @@index([apiKeyId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  BILLING
+  ENHANCEMENT
+}
