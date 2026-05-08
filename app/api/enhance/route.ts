@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import sharp from "sharp";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/auth/session";
+import { getUserIdOrDemo } from "@/lib/auth/session";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getEnhanceWebhookUrl, replicate } from "@/lib/ai/replicate";
 import { env } from "@/lib/env";
@@ -16,8 +20,7 @@ const enhanceSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const required = await requireUser();
-  if ("error" in required) return required.error;
+  const required = await getUserIdOrDemo();
 
   const rate = checkRateLimit(`enhance:${required.userId}`, 20, 60_000);
   if (!rate.ok) {
@@ -102,9 +105,49 @@ export async function POST(request: Request) {
       processingTime: result.startedAt ? (Date.now() - result.startedAt.getTime()) / 1000 : undefined
     }
   });
+
+  let enhancedUrl = image.originalUrl;
+  try {
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    await mkdir(uploadsDir, { recursive: true });
+
+    let sourceBuffer: Buffer;
+    if (image.originalUrl.startsWith("/")) {
+      const localPath = path.join(process.cwd(), "public", image.originalUrl.replace(/^\//, ""));
+      sourceBuffer = await readFile(localPath);
+    } else {
+      const source = await fetch(image.originalUrl);
+      sourceBuffer = Buffer.from(await source.arrayBuffer());
+    }
+
+    const sourceMeta = await sharp(sourceBuffer).metadata();
+    const targetWidth = Math.min((sourceMeta.width ?? 1200) * 2, 4096);
+    const enhancedName = `enhanced-${randomUUID()}.webp`;
+    const enhancedPath = path.join(uploadsDir, enhancedName);
+
+    const output = await sharp(sourceBuffer)
+      .resize({ width: targetWidth, withoutEnlargement: false })
+      .modulate({ brightness: 1.04, saturation: 1.08 })
+      .sharpen({ sigma: 1.4, m1: 1.2, m2: 2.2 })
+      .webp({ quality: 94 })
+      .toBuffer();
+
+    await writeFile(enhancedPath, output);
+    enhancedUrl = `/uploads/${enhancedName}`;
+  } catch (error) {
+    await prisma.enhancement.update({
+      where: { id: completed.id },
+      data: {
+        status: "FAILED",
+        errorMessage: error instanceof Error ? error.message : "Local enhancement failed"
+      }
+    });
+    return NextResponse.json({ error: "Enhancement processing failed" }, { status: 500 });
+  }
+
   await prisma.image.update({
     where: { id: image.id },
-    data: { isProcessed: true, enhancedUrl: image.originalUrl }
+    data: { isProcessed: true, enhancedUrl }
   });
 
   return NextResponse.json({ ok: true, enhancement: completed, async: false });

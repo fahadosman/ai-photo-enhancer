@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/auth/session";
+import { getUserIdOrDemo } from "@/lib/auth/session";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const required = await requireUser();
-  if ("error" in required) return required.error;
+  const required = await getUserIdOrDemo();
   const { id } = await params;
 
   const enhancement = await prisma.enhancement.findFirst({

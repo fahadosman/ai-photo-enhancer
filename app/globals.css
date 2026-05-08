@@ -7,9 +7,33 @@
 }
 
 body {
-  @apply bg-background text-foreground antialiased;
+  @apply text-foreground antialiased;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(190, 24, 93, 0.2), transparent 35%),
+    radial-gradient(circle at 85% 85%, rgba(22, 163, 74, 0.2), transparent 35%),
+    linear-gradient(160deg, #050505 0%, #0b0b0b 45%, #050505 100%);
 }
 
 .glass {
   @apply border border-border bg-card backdrop-blur-sm;
+}
+
+.btn-vine {
+  @apply rounded-xl bg-white px-5 py-2.5 font-semibold text-black shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.btn-vine-alt {
+  @apply rounded-xl border border-white/60 bg-white/90 px-5 py-2.5 font-semibold text-black shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.card-vine {
+  @apply rounded-2xl border border-white/10 bg-black/35 p-6 shadow-[0_0_70px_rgba(22,163,74,0.10)] backdrop-blur-md;
+}
+
+.footer-link-vine {
+  @apply text-white/75 transition duration-200 hover:bg-gradient-to-r hover:from-red-300 hover:to-green-300 hover:bg-clip-text hover:text-transparent;
+}
+
+.footer-social-vine {
+  @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/80 transition duration-200 hover:-translate-y-0.5 hover:border-green-300/40 hover:text-white hover:shadow-[0_0_24px_rgba(22,163,74,0.45)];
 }

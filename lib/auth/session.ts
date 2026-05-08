@@ -10,6 +10,23 @@ export async function requireUser() {
   return { userId };
 }
 
+export async function getUserIdOrDemo() {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.id) return { userId: session.user.id };
+
+  const demo = await prisma.user.upsert({
+    where: { email: "demo@local.ai-photo-enhancer" },
+    update: {},
+    create: {
+      email: "demo@local.ai-photo-enhancer",
+      name: "Demo User",
+      credits: 100000
+    },
+    select: { id: true }
+  });
+  return { userId: demo.id };
+}
+
 export async function requireAdmin() {
   const required = await requireUser();
   if ("error" in required) return required;

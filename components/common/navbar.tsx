@@ -11,7 +11,7 @@ export function Navbar() {
           <Link href="/pricing">Pricing</Link>
           <Link href="/faq">FAQ</Link>
           <Link href="/contact">Contact</Link>
-          <Link href="/sign-in" className="rounded-md bg-purple-600 px-3 py-1.5 text-white">
+          <Link href="/sign-in" className="btn-vine px-4 py-1.5 text-sm">
             Sign in
           </Link>
         </nav>

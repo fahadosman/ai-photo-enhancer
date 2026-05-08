@@ -5,15 +5,6 @@ import { useState } from "react";
 
 type UploadResult = { image: { id: string; filename: string; originalUrl: string } };
 
-type SignatureResponse = {
-  ok: boolean;
-  timestamp: number;
-  folder: string;
-  signature: string;
-  apiKey: string;
-  cloudName: string;
-};
-
 type EnhancementResponse = {
   enhancement: { id: string; status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" };
   async: boolean;
@@ -65,44 +56,12 @@ export function EnhanceForm() {
     setLoading(true);
     setEnhancedUrl(null);
 
-    const signatureResponse = await fetch("/api/upload/signature", { method: "POST" });
-    const signatureData = (await signatureResponse.json()) as SignatureResponse;
-    if (!signatureResponse.ok || !signatureData.ok) {
-      setMessage("Could not create upload signature.");
-      setLoading(false);
-      return;
-    }
-
     const uploadForm = new FormData();
     uploadForm.set("file", file);
-    uploadForm.set("api_key", signatureData.apiKey);
-    uploadForm.set("timestamp", String(signatureData.timestamp));
-    uploadForm.set("folder", signatureData.folder);
-    uploadForm.set("signature", signatureData.signature);
-
-    const cloudinaryResponse = await fetch(
-      `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
-      {
-        method: "POST",
-        body: uploadForm
-      }
-    );
-    const cloudinaryData = await cloudinaryResponse.json();
-    if (!cloudinaryResponse.ok || !cloudinaryData.secure_url) {
-      setMessage("Cloudinary upload failed.");
-      setLoading(false);
-      return;
-    }
 
     const response = await fetch("/api/upload", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        originalUrl: cloudinaryData.secure_url as string,
-        filename: file.name,
-        mimeType: file.type || "image/jpeg",
-        size: file.size
-      })
+      body: uploadForm
     });
     const data = await response.json();
     if (!response.ok) {
@@ -144,29 +103,36 @@ export function EnhanceForm() {
   };
 
   return (
-    <div className="glass mt-8 space-y-4 rounded-xl p-6">
-      <input
-        type="file"
-        accept="image/*"
-        className="w-full rounded-md border border-border bg-transparent p-2"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-      />
+    <div className="card-vine mt-8 space-y-5">
+      <label className="block">
+        <span className="mb-2 block text-sm font-medium text-white/80">Choose your photo</span>
+        <div className="flex items-center justify-between rounded-xl border border-white/20 bg-white/5 p-3">
+          <span className="truncate text-sm text-white/80">{file ? file.name : "No file selected yet"}</span>
+          <span className="btn-vine px-3 py-1.5 text-xs">Browse</span>
+        </div>
+        <input
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
+      </label>
       <div className="flex gap-3">
         <button
-          className="rounded-md bg-blue-600 px-4 py-2 disabled:opacity-50"
+          className="btn-vine"
           onClick={runUpload}
           type="button"
           disabled={!file || loading}
         >
-          Save Upload
+          Upload Photo
         </button>
         <button
-          className="rounded-md bg-purple-600 px-4 py-2 disabled:opacity-50"
+          className="btn-vine-alt"
           onClick={runEnhance}
           type="button"
           disabled={!upload?.image.id || loading}
         >
-          Enhance
+          Enhance Quality
         </button>
       </div>
       {upload?.image.originalUrl ? (
